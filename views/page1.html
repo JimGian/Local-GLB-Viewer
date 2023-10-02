@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" 
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Load GLB File</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #panorama-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        #model-container {
+            position: relative;
+            width: 100%;
+            height: 60vh;
+        }
+
+        .slider-modal {
+            display: block;
+            position: fixed;
+            top: 5%;
+            left: 2%;
+            right: 4%;
+            width: 84%;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 2;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        label {
+            color: rgb(158, 44, 137);
+            font-weight: bold;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            /* Fixed width for labels */
+            width: 150px;
+            /* Adjust text alignment */
+            text-align: right;
+            font-size: 13px;
+            margin-right: 10px; /* Add margin to separate label and slider */
+        }
+
+        input[type="range"] {
+            width: 40%;
+            margin-left: 10px;
+        }
+
+        /* Style the toggle button */
+        #toggle-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Adjust the vertical spacing between the sliders and the canvas */
+        #canvas {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="slider-modal" class="slider-modal">
+        <div class="slider-wrapper">
+            <div class="slider-group">
+                <label for="brightness-slider">Brightness</label>
+                <input id="brightness-slider" type="range" min="0" max="2" step="0.1" value="1">
+            </div>
+            <div class="slider-group">
+                <label for="color-slider">Color</label>
+                <input id="color-slider" type="color" value="#ffffff">
+            </div>
+            <div class="slider-group">
+                <label for="spotlight-intensity-slider">Top Left spotlight</label>
+                <input id="spotlight-intensity-slider" type="range" min="0" max="2" step=".1" value="1">
+            </div>
+            <div class="slider-group">
+                <label for="spotlight-intensity-slider1">Top Right spotlight</label>
+                <input id="spotlight-intensity-slider1" type="range" min="0" max="2" step=".1" value="1">
+            </div>
+            <div class="slider-group">
+                <label for="spotlight-intensity-slider2">Bottom Left spotlight</label>
+                <input id="spotlight-intensity-slider2" type="range" min="0" max="2" step=".1" value="1">
+            </div>
+            <div class="slider-group">
+                <label for="spotlight-intensity-slider3">Bottom Right spotlight</label>
+                <input id="spotlight-intensity-slider3" type="range" min="0" max="2" step=".1" value="1">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="panorama-container"></div>
+<div id="model-container"></div>
+<button id="toggle-button">Lighting</button>
+<script src="../three_imports/three.min.js"></script>
+<script src="../three_imports/GLTFLoader.js"></script>
+<script src="../three_imports/gsap.min.js"></script>
+<script src="../three_imports/ScrollTrigger.min.js"></script>
+<script src="../three_imports/panolens.min.js"></script>
+<script src="../three_imports/OrbitControls.js"></script>
+<script>
+    //===================================== scene creation
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.001, 200)
+    camera.position.set(0, 1, 2)
+
+    //===================================== default lighting
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 0.5); // Reduce intensity to 0.5
+    light.position.set(0.5, 0.5, 0.25)
+    scene.add(light);
+
+    const dirLight = new THREE.HemisphereLight(0xffffff, 0.5); // Reduce intensity to 0.5
+    dirLight.position.set(-0.5, 0.5, -0.25)
+    scene.add(dirLight);
+
+    //===================================== rendering
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.setSize(window.innerWidth, window.innerHeight)
+
+    const container = document.getElementById('container');
+    container.appendChild(renderer.domElement)
+
+    let model;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchDistanceStart = 0;
+    let interactingWithLightSlider = false;
+    let interactingWithModelZoom = false; // Flag for zooming only the model
+
+    // Create a spotlight
+    const spotlight = new THREE.SpotLight(0xffffff, 1);
+    spotlight.position.set(-3, 20, 1); // Adjust the position as needed
+
+    const topRightSpotlight = new THREE.SpotLight(0xffffff, 1);
+    topRightSpotlight.position.set(3, 20, 1);
+
+    const bottomLeftSpotlight = new THREE.SpotLight(0xffffff, 1);
+    bottomLeftSpotlight.position.set(-3, -20, 1);
+
+    const bottomRightSpotlight = new THREE.SpotLight(0xffffff, 1);
+    bottomRightSpotlight.position.set(3, -20, 1);
+
+    spotlight.angle = Math.PI / 4; // Adjust the angle to change the cone size
+    spotlight.penumbra = 0.2; // Adjust the penumbra to control the softness of the edges
+
+    topRightSpotlight.angle = Math.PI / 4;
+    topRightSpotlight.penumbra = 0.2;
+
+    bottomLeftSpotlight.angle = Math.PI / 4;
+    bottomLeftSpotlight.penumbra = 0.2;
+
+    bottomRightSpotlight.angle = Math.PI / 4;
+    bottomRightSpotlight.penumbra = 0.2;
+
+    scene.add(spotlight);
+    scene.add(topRightSpotlight);
+    scene.add(bottomLeftSpotlight);
+    scene.add(bottomRightSpotlight);
+
+    const spotlightIntensitySlider = document.getElementById("spotlight-intensity-slider");
+
+    spotlightIntensitySlider.addEventListener('input', () => {
+        interactingWithLightSlider = true; // Set the flag to true when interacting with the slider
+        const spotintensity = parseFloat(spotlightIntensitySlider.value);
+        spotlight.intensity = spotintensity;
+    });
+
+    spotlightIntensitySlider.addEventListener('change', () => {
+        interactingWithLightSlider = false; // Reset the flag when interaction is done
+    });
+
+    const spotlightIntensitySlider1 = document.getElementById("spotlight-intensity-slider1");
+
+    spotlightIntensitySlider1.addEventListener('input', () => {
+        interactingWithLightSlider = true; // Set the flag to true when interacting with the slider
+        const spotintensity1 = parseFloat(spotlightIntensitySlider1.value);
+        topRightSpotlight.intensity = spotintensity1;
+    });
+
+    spotlightIntensitySlider1.addEventListener('change', () => {
+        interactingWithLightSlider = false; // Reset the flag when interaction is done
+    });
+
+    const spotlightIntensitySlider2 = document.getElementById("spotlight-intensity-slider2");
+
+    spotlightIntensitySlider2.addEventListener('input', () => {
+        interactingWithLightSlider = true; // Set the flag to true when interacting with the slider
+        const spotintensity2 = parseFloat(spotlightIntensitySlider2.value);
+        bottomLeftSpotlight.intensity = spotintensity2;
+    });
+
+    spotlightIntensitySlider2.addEventListener('change', () => {
+        interactingWithLightSlider = false; // Reset the flag when interaction is done
+    });
+
+    const spotlightIntensitySlider3 = document.getElementById("spotlight-intensity-slider3");
+
+    spotlightIntensitySlider3.addEventListener('input', () => {
+        interactingWithLightSlider = true; // Set the flag to true when interacting with the slider
+        const spotintensity3 = parseFloat(spotlightIntensitySlider3.value);
+        bottomRightSpotlight.intensity = spotintensity3;
+    });
+
+    spotlightIntensitySlider3.addEventListener('change', () => {
+        interactingWithLightSlider = false; // Reset the flag when interaction is done
+    });
+
+    //========================================= light slider
+    const brightnessSlider = document.getElementById("brightness-slider");
+        
+    brightnessSlider.addEventListener('input', () => {
+        interactingWithLightSlider = true; // Set the flag to true when interacting with the slider
+        const brightness = parseFloat(brightnessSlider.value);
+        light.intensity = brightness;
+        dirLight.intensity = brightness;
+    });
+
+    brightnessSlider.addEventListener('change', () => {
+        interactingWithLightSlider = false; // Reset the flag when interaction is done
+    });
+
+    const colorSlider = document.getElementById("color-slider");
+
+    colorSlider.addEventListener('input', () => {
+        const color = new THREE.Color(colorSlider.value);
+        light.color = color;
+        dirLight.color = color;
+    });
+
+    //======================================= touch rotation
+    // Touch event listeners for rotation and zooming
+    container.addEventListener('touchstart', function (event) {
+        if (event.touches.length === 1) {
+            touchStartX = event.touches[0].clientX;
+            touchStartY = event.touches[0].clientY;
+        } else if (event.touches.length === 2) {
+            touchDistanceStart = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+            );
+        }
+    });
+
+    // Create panorama scene for the background
+    const panorama = new PANOLENS.ImagePanorama('../assets/arch1.jpg'); // Replace with your image path
+    const viewer = new PANOLENS.Viewer({ container: document.getElementById('panorama-container') });
+    viewer.add(panorama);
+
+    // Synchronize panorama camera with main camera
+    panorama.link(camera, new THREE.Vector3(0, 0, 0), 0);
+
+    //========================================= model load 
+    const loader = new THREE.GLTFLoader()
+    loader.load('../assets/BoomBox.glb', (loadedModel) => {
+        model = loadedModel.scene;
+        model.scale.set(25,25,25)
+        model.position.y = 0.5;
+        scene.add(model);
+    })
+
+    container.addEventListener('touchmove', function (event) {
+        if (model && !interactingWithLightSlider && !interactingWithModelZoom) { // Check the flag before rotating the model
+            const touchX = event.touches[0].clientX;
+            const touchY = event.touches[0].clientY;
+            const deltaX = touchX - touchStartX;
+            const deltaY = touchY - touchStartY;
+
+            // Rotate model
+            model.rotation.x += deltaY * 0.008;
+            model.rotation.y += deltaX * 0.008;
+
+            // Update modelRotationX based on the model's rotation around the x-axis
+            modelRotationX = model.rotation.x;
+
+            // Rotate the panorama background 
+            panorama.rotation.y -= deltaX * 0.008;
+            panorama.rotation.x = modelRotationX * 0.5;
+
+            touchStartX = touchX;
+            touchStartY = touchY;
+        }
+
+        // Zooming using finger gestures
+        if (event.touches.length === 2) {
+            const touchDistanceCurrent = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+            );
+
+            if (!interactingWithModelZoom) {
+                // The user has started interacting with the model's zoom
+                interactingWithModelZoom = true;
+                touchDistanceStart = touchDistanceCurrent;
+            }
+
+            const zoomFactor = touchDistanceCurrent / touchDistanceStart;
+            model.scale.x *= zoomFactor;
+            model.scale.y *= zoomFactor;
+            model.scale.z *= zoomFactor;
+
+            touchDistanceStart = touchDistanceCurrent;
+        }
+
+    });
+
+    container.addEventListener('touchend', function (event) {
+        if (interactingWithModelZoom) {
+            interactingWithModelZoom = false;
+        }
+    });
+
+    const toggleButton = document.getElementById('toggle-button');
+    const spotlightSlider = document.getElementById('spotlight-intensity-slider');
+    const spotlightSlider1 = document.getElementById('spotlight-intensity-slider1');
+    const spotlightSlider2 = document.getElementById('spotlight-intensity-slider2');
+    const spotlightSlider3 = document.getElementById('spotlight-intensity-slider3');
+    const spotlightLabels = document.querySelectorAll('label');
+
+    // Lighting button
+    toggleButton.addEventListener('click', () => {
+        const sliderModal = document.getElementById('slider-modal');
+        sliderModal.style.display = (sliderModal.style.display === 'none') ? 'block' : 'none';
+        
+        brightnessSlider.style.display = (brightnessSlider.style.display === 'none') ? 'block' : 'none';
+        colorSlider.style.display = (colorSlider.style.display === 'none') ? 'block' : 'none';
+
+        spotlightSlider.style.display = (spotlightIntensitySlider.style.display === 'none') ? 'block' : 'none';
+        spotlightSlider1.style.display = (spotlightIntensitySlider1.style.display === 'none') ? 'block' : 'none';
+        spotlightSlider2.style.display = (spotlightIntensitySlider2.style.display === 'none') ? 'block' : 'none';
+        spotlightSlider3.style.display = (spotlightIntensitySlider3.style.display === 'none') ? 'block' : 'none';
+
+
+        
+        // Toggle the visibility of the spotlight labels
+        spotlightLabels.forEach(label => {
+            label.style.display = (label.style.display === 'none') ? 'block' : 'none';
+        });
+    });
+
+    function render() {
+        if (!interactingWithLightSlider) {
+            const brightness = parseFloat(brightnessSlider.value);
+            light.intensity = brightness;
+            dirLight.intensity = brightness;
+            
+            const color = new THREE.Color(colorSlider.value);
+            light.color = color;
+            dirLight.color = color;
+        }
+        renderer.render(scene, camera);
+    }
+    renderer.setAnimationLoop(render);
+</script>
+</body>
+</html>

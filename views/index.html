@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Menu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f7f7f7;
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px 0;
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .menu h2 {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 15px 10%;
+            margin: 10px;
+            font-size: 18px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            width: 80%;
+            max-width: 250px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        #credits-button {
+            background-color: #4CAF50; /* Green color code */
+            padding: 15px 10%;
+            margin: 10px;
+            font-size: 18px;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 80%;
+            max-width: 250px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to the Menu!</h1>
+    </div>
+    <div class="menu">
+        <h2>Please select a GLB to view:</h2>
+        <button onclick="loadPage('page1.html')">Boom Box</button>
+        <button onclick="loadPage('page2.html')">Duck</button>
+        <button onclick="loadPage('page3.html')">Avocado</button>
+        <button onclick="loadPage('page4.html')">Shark</button>
+        <button onclick="loadPage('page5.html')">Dodoni Eagle</button>
+    </div>
+
+    <!-- Credits button -->
+    <button id="credits-button">Credits</button>
+
+    <div id="credits-message" style="display: none;">Special thanks to the androidjs team!</div>
+
+    <script>
+        function loadPage(page) {
+            window.location.href = page;
+        }
+
+        const creditsButton = document.getElementById('credits-button');
+        const creditsMessage = document.getElementById('credits-message');
+
+        creditsButton.addEventListener('click', () => {
+            creditsMessage.style.display = 'block';
+            setTimeout(() => {
+                creditsMessage.style.display = 'none';
+            }, 3000); // Display the message for 3 seconds 
+        });
+    </script>
+</body>
+</html>
