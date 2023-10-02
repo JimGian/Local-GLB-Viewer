@@ -8,4 +8,5 @@ To create the apk file, you will need to:
 3. Generate project ($ androidjs init)
 4. Use Build command ($ androidjs build) 
 
-The Build command should be executed at the folder where the project is downloaded.
+~ The Build command should be executed at the folder where the project is downloaded.
+~ After Build command is executed, an apk file will be created in "dist" folder. The user should be able to open the app with the help of an android simulator or when moved to an android device, they can download it and run the app.
