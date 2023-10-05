@@ -9,4 +9,6 @@ To create the apk file, you will need to:
 
 ~ The Build command should be executed at the folder where the project is downloaded.
 ~ After Build command is executed, an apk file will be created in "dist" folder. The user should be able to open the app with the help of an android simulator or when moved to an android device, they can download it and run the app.
-![image](https://github.com/JimGian/Local-GLB-Viewer/assets/36714979/fe1bce95-231d-4e07-9270-a6d6d47007eb)
+
+![image](https://github.com/JimGian/Local-GLB-Viewer/assets/36714979/fbcbfcb1-00aa-4974-a509-8cf0aa65afec)
+
